@@ -111,6 +111,7 @@ var first_msg_oxy = true;
 var first_msg_thermo = true;
 var first_msg_bp = true;
 
+var pulse_array = []
 // called when a message arrives
 client.onMessageArrived = function (message) {
     console.log("== [PAHO] MESSAGE ARRIVED! : " + message.payloadString + " ==");
@@ -177,6 +178,21 @@ client.onMessageArrived = function (message) {
             var oximeter_array = message.payloadString.split(",");
             var oxygen = parseInt(oximeter_array[1]);
 
+            var payload = message.payloadString;
+            var start_index = payload.indexOf("[") + 1;
+            var end_index = payload.indexOf("]");
+            var pulsewave_str = payload.slice(start_index, end_index);
+            var pulsewave_array = pulsewave_str.split(",");
+            console.log("LOGGING" + pulsewave_array)
+            pulse_array.push(pulsewave_array);
+            const y_data = pulse_array
+            const x_data = time
+
+           pulsewave_array.forEach((pulse) => {
+               addData(myLineChart, " ", pulse);
+           })
+
+
             // update message web data
             oxygen_data.innerHTML = "spO2: " + oxygen;
 
@@ -186,9 +202,9 @@ client.onMessageArrived = function (message) {
 
             // update message web data
             heartrate_data.innerHTML = "hr(bpm): " + heartrate;
-            if (heartrate > 40){ 
-                addData(myLineChart, time, heartrate);
-            }
+            // if (heartrate > 40){ 
+            //     addData(myLineChart, time, heartrate);
+            // }
 
             // update message web timestamp
             var oximeter_temp = document.getElementById("oximeter_time");
@@ -272,16 +288,19 @@ function timeSince(date) {
 //Chart
 
 const ctx = document.getElementById('myChart');
-const labels = []
+const xdata = []
+
+
 const data = {
-  labels: labels,
-  datasets: [{
-    label: 'My First Dataset',
+  labels: xdata,
+  datasets: [
+  {
+    label: 'Pulse Wave',
     data: [],
     fill: false,
-    borderColor: 'rgb(75, 192, 192)',
+    borderColor: 'rgb(255, 99, 132)',
     tension: 0.8
-  },
+  }
 //   
 ]
 };
@@ -291,17 +310,28 @@ const myLineChart = new Chart(ctx, {
                         data: data,
                         options: {
                             scales: {
-                            y: {
-                                beginAtZero: false
-                            }
+                                y: {
+                                    beginAtZero: false
+                                }
                             }
                         }
                     });
 
-function addData(chart, label, data) {
+function addData(chart, label, pulse) {
+    
+    const max_data = 90;
+    
+    if (data.labels.length > max_data){
+        data.labels.shift()
+    }
     chart.data.labels.push(label);
+
     chart.data.datasets.forEach((dataset) => {
-        dataset.data.push(data);
+        dataset.data.push(pulse);
+        console.log("Length + " + dataset.data.length)
+        if (dataset.data.length > max_data){
+            dataset.data.shift()
+        }
     });
     chart.update();
 }
